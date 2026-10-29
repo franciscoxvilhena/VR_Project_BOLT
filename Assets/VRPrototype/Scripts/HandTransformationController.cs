@@ -95,6 +95,10 @@ namespace VRPrototype
             anchorObj.transform.SetParent(transform, false);
             anchorRoot = anchorObj.transform;
 
+            GameObject defaultRightMesh = GameObject.Find("Right Hand Tracking");
+            if (defaultRightMesh != null)
+                defaultRightMesh.SetActive(false);
+
             if (!createPlaceholderVisuals)
                 return;
 

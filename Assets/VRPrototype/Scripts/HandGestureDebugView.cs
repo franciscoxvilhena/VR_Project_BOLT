@@ -7,6 +7,13 @@ namespace VRPrototype
     {
         public HandGestureSystem gestureSystem;
         public bool showMetrics = true;
+        public bool drawLeftHandSkeleton = true;
+        public bool drawRightHandSkeleton = false;
+        public float jointSphereRadius = 0.006f;
+        public float boneThickness = 0.006f;
+        public Color skeletonJointColor = new Color(0.2f, 0.85f, 1f);
+        public Color skeletonBoneColor = new Color(0.85f, 0.92f, 1f);
+
         public float markerSize = 0.025f;
         public Vector3 markerOffset = new Vector3(0f, 0.06f, 0f);
         public Vector3 labelOffset = new Vector3(0f, 0.11f, 0f);
@@ -21,7 +28,47 @@ namespace VRPrototype
 
         private HandVisual leftVisual;
         private HandVisual rightVisual;
+        private HandSkeletonVisual leftSkeleton;
+        private HandSkeletonVisual rightSkeleton;
+        private IHandFrameSource frameSource;
         private Camera mainCamera;
+
+        private static readonly int[,] BonePairs = new int[,]
+        {
+            { (int)HandJoint.Wrist, (int)HandJoint.Palm },
+            { (int)HandJoint.Wrist, (int)HandJoint.ThumbMetacarpal },
+            { (int)HandJoint.ThumbMetacarpal, (int)HandJoint.ThumbProximal },
+            { (int)HandJoint.ThumbProximal, (int)HandJoint.ThumbDistal },
+            { (int)HandJoint.ThumbDistal, (int)HandJoint.ThumbTip },
+
+            { (int)HandJoint.Wrist, (int)HandJoint.IndexMetacarpal },
+            { (int)HandJoint.IndexMetacarpal, (int)HandJoint.IndexProximal },
+            { (int)HandJoint.IndexProximal, (int)HandJoint.IndexIntermediate },
+            { (int)HandJoint.IndexIntermediate, (int)HandJoint.IndexDistal },
+            { (int)HandJoint.IndexDistal, (int)HandJoint.IndexTip },
+
+            { (int)HandJoint.Wrist, (int)HandJoint.MiddleMetacarpal },
+            { (int)HandJoint.MiddleMetacarpal, (int)HandJoint.MiddleProximal },
+            { (int)HandJoint.MiddleProximal, (int)HandJoint.MiddleIntermediate },
+            { (int)HandJoint.MiddleIntermediate, (int)HandJoint.MiddleDistal },
+            { (int)HandJoint.MiddleDistal, (int)HandJoint.MiddleTip },
+
+            { (int)HandJoint.Wrist, (int)HandJoint.RingMetacarpal },
+            { (int)HandJoint.RingMetacarpal, (int)HandJoint.RingProximal },
+            { (int)HandJoint.RingProximal, (int)HandJoint.RingIntermediate },
+            { (int)HandJoint.RingIntermediate, (int)HandJoint.RingDistal },
+            { (int)HandJoint.RingDistal, (int)HandJoint.RingTip },
+
+            { (int)HandJoint.Wrist, (int)HandJoint.LittleMetacarpal },
+            { (int)HandJoint.LittleMetacarpal, (int)HandJoint.LittleProximal },
+            { (int)HandJoint.LittleProximal, (int)HandJoint.LittleIntermediate },
+            { (int)HandJoint.LittleIntermediate, (int)HandJoint.LittleDistal },
+            { (int)HandJoint.LittleDistal, (int)HandJoint.LittleTip },
+
+            { (int)HandJoint.IndexProximal, (int)HandJoint.MiddleProximal },
+            { (int)HandJoint.MiddleProximal, (int)HandJoint.RingProximal },
+            { (int)HandJoint.RingProximal, (int)HandJoint.LittleProximal }
+        };
 
         private class HandVisual
         {
@@ -31,19 +78,36 @@ namespace VRPrototype
             public TextMeshPro Label;
         }
 
+        private class HandSkeletonVisual
+        {
+            public GameObject Root;
+            public Transform[] Joints = new Transform[HandFrame.JointCount];
+            public Transform[] Bones = new Transform[BonePairs.GetLength(0)];
+        }
+
         private void Awake()
         {
             if (gestureSystem == null)
                 gestureSystem = GetComponent<HandGestureSystem>();
 
+            frameSource = GetComponent<IHandFrameSource>();
+            if (frameSource == null)
+                frameSource = FindAnyObjectByType<XRHandsFrameSource>();
+            if (frameSource == null)
+                frameSource = FindAnyObjectByType<WebcamHandFrameSource>();
+
             leftVisual = CreateVisual("Left Hand Debug");
             rightVisual = CreateVisual("Right Hand Debug");
+            leftSkeleton = CreateSkeleton("Left Hand Skeleton");
+            rightSkeleton = CreateSkeleton("Right Hand Skeleton");
         }
 
         private void OnDisable()
         {
             if (leftVisual?.Root != null) leftVisual.Root.SetActive(false);
             if (rightVisual?.Root != null) rightVisual.Root.SetActive(false);
+            if (leftSkeleton?.Root != null) leftSkeleton.Root.SetActive(false);
+            if (rightSkeleton?.Root != null) rightSkeleton.Root.SetActive(false);
         }
 
         private void LateUpdate()
@@ -56,6 +120,8 @@ namespace VRPrototype
 
             UpdateVisual(leftVisual, HandSide.Left);
             UpdateVisual(rightVisual, HandSide.Right);
+            UpdateSkeleton(leftSkeleton, HandSide.Left, drawLeftHandSkeleton);
+            UpdateSkeleton(rightSkeleton, HandSide.Right, drawRightHandSkeleton);
         }
 
         private HandVisual CreateVisual(string name)
@@ -84,6 +150,105 @@ namespace VRPrototype
 
             vis.Root.SetActive(false);
             return vis;
+        }
+
+        private HandSkeletonVisual CreateSkeleton(string name)
+        {
+            var skel = new HandSkeletonVisual();
+            skel.Root = new GameObject(name);
+            skel.Root.transform.SetParent(transform, false);
+
+            for (int i = 0; i < HandFrame.JointCount; i++)
+            {
+                GameObject jointObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                jointObj.name = ((HandJoint)i).ToString();
+                Destroy(jointObj.GetComponent<Collider>());
+                jointObj.transform.SetParent(skel.Root.transform, false);
+                float r = i == (int)HandJoint.IndexTip ? jointSphereRadius * 1.4f : jointSphereRadius;
+                jointObj.transform.localScale = Vector3.one * (r * 2f);
+
+                Renderer rend = jointObj.GetComponent<Renderer>();
+                if (rend != null)
+                    rend.material.color = i == (int)HandJoint.IndexTip ? new Color(1f, 0.3f, 0.5f) : skeletonJointColor;
+
+                skel.Joints[i] = jointObj.transform;
+            }
+
+            int boneCount = BonePairs.GetLength(0);
+            for (int b = 0; b < boneCount; b++)
+            {
+                GameObject boneObj = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                boneObj.name = "Bone_" + b;
+                Destroy(boneObj.GetComponent<Collider>());
+                boneObj.transform.SetParent(skel.Root.transform, false);
+
+                Renderer rend = boneObj.GetComponent<Renderer>();
+                if (rend != null)
+                    rend.material.color = skeletonBoneColor;
+
+                skel.Bones[b] = boneObj.transform;
+            }
+
+            skel.Root.SetActive(false);
+            return skel;
+        }
+
+        private void UpdateSkeleton(HandSkeletonVisual skel, HandSide side, bool shouldDraw)
+        {
+            if (!shouldDraw || frameSource == null || !frameSource.IsRunning)
+            {
+                if (skel.Root.activeSelf)
+                    skel.Root.SetActive(false);
+                return;
+            }
+
+            HandFrame frame = frameSource.GetFrame(side);
+            if (frame == null || !frame.IsTracked)
+            {
+                if (skel.Root.activeSelf)
+                    skel.Root.SetActive(false);
+                return;
+            }
+
+            if (!skel.Root.activeSelf)
+                skel.Root.SetActive(true);
+
+            for (int i = 0; i < HandFrame.JointCount; i++)
+            {
+                bool valid = frame.Valid[i];
+                if (skel.Joints[i].gameObject.activeSelf != valid)
+                    skel.Joints[i].gameObject.SetActive(valid);
+
+                if (valid)
+                {
+                    skel.Joints[i].position = frame.Positions[i];
+                    skel.Joints[i].rotation = frame.Rotations[i];
+                }
+            }
+
+            int boneCount = BonePairs.GetLength(0);
+            for (int b = 0; b < boneCount; b++)
+            {
+                int jA = BonePairs[b, 0];
+                int jB = BonePairs[b, 1];
+                bool valid = frame.Valid[jA] && frame.Valid[jB];
+
+                if (skel.Bones[b].gameObject.activeSelf != valid)
+                    skel.Bones[b].gameObject.SetActive(valid);
+
+                if (valid)
+                {
+                    Vector3 posA = frame.Positions[jA];
+                    Vector3 posB = frame.Positions[jB];
+                    Vector3 diff = posB - posA;
+                    float len = diff.magnitude;
+
+                    skel.Bones[b].position = (posA + posB) * 0.5f;
+                    if (len > 0.0001f)
+                        skel.Bones[b].up = diff / len;
+                    skel.Bones[b].localScale = new Vector3(boneThickness, len * 0.5f, boneThickness);
+                }
+            }
         }
 
         private void UpdateVisual(HandVisual vis, HandSide side)
