@@ -15,6 +15,8 @@ namespace VRPrototype
         public Color noneColor = new Color(0.9f, 0.9f, 0.9f);
         public Color fistColor = new Color32(0x00, 0xBC, 0xD4, 0xFF);
         public Color scissorsColor = new Color32(0xE9, 0x1E, 0x63, 0xFF);
+        public Color knifeColor = new Color32(0x8B, 0xC3, 0x4A, 0xFF);
+        public Color torchColor = new Color32(0xFF, 0x98, 0x00, 0xFF);
         public Color rearmColor = new Color(0.35f, 0.35f, 0.35f);
 
         private HandVisual leftVisual;
@@ -117,7 +119,7 @@ namespace VRPrototype
             }
             else
             {
-                vis.Label.text = $"{title}\n<size=70%>I {m.IndexCurl:F2}  M {m.MiddleCurl:F2}  R {m.RingCurl:F2}  L {m.LittleCurl:F2}\nT {m.ThumbCurl:F2}  V {m.IndexMiddleAngle:F0}°</size>";
+                vis.Label.text = $"{title}\n<size=70%>I {m.IndexCurl:F2}  M {m.MiddleCurl:F2}  R {m.RingCurl:F2}  L {m.LittleCurl:F2}\nT {m.ThumbCurl:F2}  V {m.IndexMiddleAngle:F0}°  S {m.FourFingerSpread:F0}°</size>";
             }
         }
 
@@ -128,6 +130,8 @@ namespace VRPrototype
 
             if (gesture == HandGesture.Fist) return fistColor;
             if (gesture == HandGesture.Scissors) return scissorsColor;
+            if (gesture == HandGesture.Knife) return knifeColor;
+            if (gesture == HandGesture.Torch) return torchColor;
             return noneColor;
         }
 
@@ -138,6 +142,8 @@ namespace VRPrototype
 
             if (gesture == HandGesture.Fist) return "FIST";
             if (gesture == HandGesture.Scissors) return "SCISSORS";
+            if (gesture == HandGesture.Knife) return "KNIFE";
+            if (gesture == HandGesture.Torch) return "TORCH";
             return "-";
         }
     }

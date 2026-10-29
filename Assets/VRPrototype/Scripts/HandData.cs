@@ -13,7 +13,9 @@ namespace VRPrototype
     {
         None = 0,
         Fist = 1,
-        Scissors = 2
+        Scissors = 2,
+        Knife = 3,
+        Torch = 4
     }
 
     public enum HandTrackingState
@@ -75,6 +77,7 @@ namespace VRPrototype
         public float RingCurl;
         public float LittleCurl;
         public float IndexMiddleAngle;
+        public float FourFingerSpread;
         public Vector3 PalmPosition;
         public Vector3 PalmNormal;
 
@@ -103,6 +106,7 @@ namespace VRPrototype
         [Range(0f, 1f)] public float CurledExit = 0.5f;
         [Range(0f, 1f)] public float ExtendedEnter = 0.3f;
         [Range(0f, 1f)] public float ExtendedExit = 0.45f;
+        public float KnifeMaxSpreadAngle = 25f;
         public float GestureHoldTime = 0.06f;
 
         public float TrackingTimeout = 0.5f;

@@ -25,6 +25,7 @@ namespace VRPrototype
             Vector3 wrist = frame.GetPosition(HandJoint.Wrist);
             Vector3 indexKnuckle = frame.GetPosition(HandJoint.IndexProximal);
             Vector3 middleKnuckle = frame.GetPosition(HandJoint.MiddleProximal);
+            Vector3 ringKnuckle = frame.GetPosition(HandJoint.RingProximal);
             Vector3 littleKnuckle = frame.GetPosition(HandJoint.LittleProximal);
 
             Vector3 normal = Vector3.Cross(indexKnuckle - wrist, littleKnuckle - wrist);
@@ -35,7 +36,13 @@ namespace VRPrototype
 
             Vector3 indexDir = Vector3.ProjectOnPlane(frame.GetPosition(HandJoint.IndexTip) - indexKnuckle, metrics.PalmNormal);
             Vector3 middleDir = Vector3.ProjectOnPlane(frame.GetPosition(HandJoint.MiddleTip) - middleKnuckle, metrics.PalmNormal);
+            Vector3 ringDir = Vector3.ProjectOnPlane(frame.GetPosition(HandJoint.RingTip) - ringKnuckle, metrics.PalmNormal);
+            Vector3 littleDir = Vector3.ProjectOnPlane(frame.GetPosition(HandJoint.LittleTip) - littleKnuckle, metrics.PalmNormal);
+
             metrics.IndexMiddleAngle = Vector3.Angle(indexDir, middleDir);
+            float middleRingAngle = Vector3.Angle(middleDir, ringDir);
+            float ringLittleAngle = Vector3.Angle(ringDir, littleDir);
+            metrics.FourFingerSpread = Mathf.Max(metrics.IndexMiddleAngle, Mathf.Max(middleRingAngle, ringLittleAngle));
             return true;
         }
 
@@ -67,6 +74,16 @@ namespace VRPrototype
                 return HandGesture.Fist;
             }
 
+            bool holdingTorch = held == HandGesture.Torch;
+            if (IsExtended(metrics.IndexCurl, holdingTorch, settings) &&
+                IsExtended(metrics.ThumbCurl, holdingTorch, settings) &&
+                IsCurled(metrics.MiddleCurl, holdingTorch, settings) &&
+                IsCurled(metrics.RingCurl, holdingTorch, settings) &&
+                IsCurled(metrics.LittleCurl, holdingTorch, settings))
+            {
+                return HandGesture.Torch;
+            }
+
             bool holdingScissors = held == HandGesture.Scissors;
             if (IsExtended(metrics.IndexCurl, holdingScissors, settings) &&
                 IsExtended(metrics.MiddleCurl, holdingScissors, settings) &&
@@ -74,6 +91,17 @@ namespace VRPrototype
                 IsCurled(metrics.LittleCurl, holdingScissors, settings))
             {
                 return HandGesture.Scissors;
+            }
+
+            bool holdingKnife = held == HandGesture.Knife;
+            float maxSpread = holdingKnife ? settings.KnifeMaxSpreadAngle + 5f : settings.KnifeMaxSpreadAngle;
+            if (IsExtended(metrics.IndexCurl, holdingKnife, settings) &&
+                IsExtended(metrics.MiddleCurl, holdingKnife, settings) &&
+                IsExtended(metrics.RingCurl, holdingKnife, settings) &&
+                IsExtended(metrics.LittleCurl, holdingKnife, settings) &&
+                metrics.FourFingerSpread <= maxSpread)
+            {
+                return HandGesture.Knife;
             }
 
             return HandGesture.None;

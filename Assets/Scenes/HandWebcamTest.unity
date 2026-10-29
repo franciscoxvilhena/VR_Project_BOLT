@@ -131,6 +131,7 @@ GameObject:
   - component: {fileID: 971629974}
   - component: {fileID: 971629973}
   - component: {fileID: 971629972}
+  - component: {fileID: 971629976}
   m_Layer: 0
   m_Name: WebcamHands
   m_TagString: Untagged
@@ -138,6 +139,32 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
+--- !u!114 &971629976
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 971629971}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d12f3a4b5c6d7e8f9a0b1c2d3e4f5a6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPrototype.HandTransformationController
+  gestureSystem: {fileID: 971629973}
+  prostheticSide: 1
+  followWrist: 1
+  createPlaceholderVisuals: 1
+  toolOffset: {x: 0, y: 0, z: 0.08}
+  normalHandVisual: {fileID: 0}
+  scissorsVisual: {fileID: 0}
+  hammerVisual: {fileID: 0}
+  knifeVisual: {fileID: 0}
+  torchVisual: {fileID: 0}
+  currentTool: 0
+  onToolChanged:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!114 &971629972
 MonoBehaviour:
   m_ObjectHideFlags: 0
