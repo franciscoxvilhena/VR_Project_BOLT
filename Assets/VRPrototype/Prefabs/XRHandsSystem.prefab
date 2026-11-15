@@ -1,0 +1,136 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &3086380539816693168
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1976202886811048741}
+  - component: {fileID: 2493658746928895685}
+  - component: {fileID: 7331573695685862543}
+  - component: {fileID: 8618970510610236427}
+  - component: {fileID: 903667858460177507}
+  m_Layer: 0
+  m_Name: XRHandsSystem
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1976202886811048741
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3086380539816693168}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2493658746928895685
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3086380539816693168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b95b0c1c2c3a64e4fa01f106f657e5f9, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPrototype.XRHandsFrameSource
+  trackingSpace: {fileID: 0}
+--- !u!114 &7331573695685862543
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3086380539816693168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ea085adabbb3ed14b8914e8ee7f1e07c, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPrototype.HandGestureSystem
+  settings:
+    FingerStraightFlexion: 35
+    FingerCurledFlexion: 220
+    ThumbStraightFlexion: 15
+    ThumbCurledFlexion: 110
+    CurledEnter: 0.65
+    CurledExit: 0.5
+    ExtendedEnter: 0.3
+    ExtendedExit: 0.45
+    KnifeMaxSpreadAngle: 25
+    GestureHoldTime: 0.06
+    TrackingTimeout: 0.5
+    RequireNeutralRearm: 0
+    RearmNeutralTime: 0.1
+  onGestureChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  logChanges: 1
+--- !u!114 &8618970510610236427
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3086380539816693168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c78d0159c6254dd4d8c426199b476772, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPrototype.HandGestureDebugView
+  gestureSystem: {fileID: 7331573695685862543}
+  showMetrics: 1
+  drawLeftHandSkeleton: 1
+  drawRightHandSkeleton: 0
+  jointSphereRadius: 0.006
+  boneThickness: 0.006
+  skeletonJointColor: {r: 0.2, g: 0.85, b: 1, a: 1}
+  skeletonBoneColor: {r: 0.85, g: 0.92, b: 1, a: 1}
+  markerSize: 0.025
+  markerOffset: {x: 0, y: 0.06, z: 0}
+  labelOffset: {x: 0, y: 0.11, z: 0}
+  labelFontSize: 0.12
+  noneColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
+  fistColor: {r: 0, g: 0.7372549, b: 0.83137256, a: 1}
+  scissorsColor: {r: 0.9137255, g: 0.11764706, b: 0.3882353, a: 1}
+  knifeColor: {r: 0.54509807, g: 0.7647059, b: 0.2901961, a: 1}
+  torchColor: {r: 1, g: 0.59607846, b: 0, a: 1}
+  rearmColor: {r: 0.35, g: 0.35, b: 0.35, a: 1}
+--- !u!114 &903667858460177507
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3086380539816693168}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d12f3a4b5c6d7e8f9a0b1c2d3e4f5a6b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::VRPrototype.HandTransformationController
+  gestureSystem: {fileID: 7331573695685862543}
+  prostheticSide: 1
+  followWrist: 1
+  createPlaceholderVisuals: 1
+  toolOffset: {x: 0, y: 0, z: 0.08}
+  normalHandVisual: {fileID: 0}
+  scissorsVisual: {fileID: 0}
+  hammerVisual: {fileID: 0}
+  knifeVisual: {fileID: 0}
+  torchVisual: {fileID: 0}
+  currentTool: 0
+  onToolChanged:
+    m_PersistentCalls:
+      m_Calls: []

@@ -10402,6 +10402,18 @@ PrefabInstance:
       propertyPath: m_SizeDelta.y
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 3776134002055136721, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4025051795825305909, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 4381072889419385576, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4750419573833148750, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
       propertyPath: m_AnchorMax.y
       value: 1
@@ -10538,6 +10550,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.y
       value: -23
       objectReference: {fileID: 0}
+    - target: {fileID: 4996476745435726235, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 8806329115733545877, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
       propertyPath: m_Name
       value: XR Origin Hands (XR Rig)
@@ -10581,6 +10597,10 @@ PrefabInstance:
     - target: {fileID: 8806329115733545878, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8935853449824297509, guid: 77e7c27b2c5525e4aa8cc9f99d654486, type: 3}
+      propertyPath: m_IsActive
+      value: 1
       objectReference: {fileID: 0}
     m_RemovedComponents: []
     m_RemovedGameObjects: []
@@ -11850,6 +11870,10 @@ PrefabInstance:
       propertyPath: m_AnchoredPosition.x
       value: 0.000015258789
       objectReference: {fileID: 0}
+    - target: {fileID: 1897108578803551515, guid: 085ce58b196caa446a8545c9dd388793, type: 3}
+      propertyPath: 'm_ActiveFontFeatures.Array.data[0]'
+      value: 1801810542
+      objectReference: {fileID: 0}
     - target: {fileID: 3060619106468608791, guid: 085ce58b196caa446a8545c9dd388793, type: 3}
       propertyPath: m_PresetInfoIsWorld
       value: 1
@@ -12814,6 +12838,12 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::VRPrototype.HandGestureDebugView
   gestureSystem: {fileID: 1754508606}
   showMetrics: 1
+  drawLeftHandSkeleton: 1
+  drawRightHandSkeleton: 0
+  jointSphereRadius: 0.006
+  boneThickness: 0.006
+  skeletonJointColor: {r: 0.2, g: 0.85, b: 1, a: 1}
+  skeletonBoneColor: {r: 0.85, g: 0.92, b: 1, a: 1}
   markerSize: 0.025
   markerOffset: {x: 0, y: 0.06, z: 0}
   labelOffset: {x: 0, y: 0.11, z: 0}
@@ -12821,6 +12851,8 @@ MonoBehaviour:
   noneColor: {r: 0.9, g: 0.9, b: 0.9, a: 1}
   fistColor: {r: 0, g: 0.7372549, b: 0.83137256, a: 1}
   scissorsColor: {r: 0.9137255, g: 0.11764706, b: 0.3882353, a: 1}
+  knifeColor: {r: 0.54509807, g: 0.7647059, b: 0.2901961, a: 1}
+  torchColor: {r: 1, g: 0.59607846, b: 0, a: 1}
   rearmColor: {r: 0.35, g: 0.35, b: 0.35, a: 1}
 --- !u!114 &1754508606
 MonoBehaviour:
@@ -12843,6 +12875,7 @@ MonoBehaviour:
     CurledExit: 0.5
     ExtendedEnter: 0.3
     ExtendedExit: 0.45
+    KnifeMaxSpreadAngle: 25
     GestureHoldTime: 0.06
     TrackingTimeout: 0.5
     RequireNeutralRearm: 0

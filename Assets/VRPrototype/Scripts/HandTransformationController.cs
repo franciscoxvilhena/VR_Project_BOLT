@@ -95,32 +95,38 @@ namespace VRPrototype
             anchorObj.transform.SetParent(transform, false);
             anchorRoot = anchorObj.transform;
 
-            if (!createPlaceholderVisuals)
-                return;
-
-            if (normalHandVisual == null)
-                normalHandVisual = CreatePlaceholder("NormalHand_Placeholder", PrimitiveType.Sphere, new Vector3(0.05f, 0.025f, 0.07f), new Color(0.85f, 0.7f, 0.6f));
-
-            if (scissorsVisual == null)
-                scissorsVisual = CreatePlaceholder("Scissors_Placeholder", PrimitiveType.Cube, new Vector3(0.03f, 0.015f, 0.14f), new Color(0.9f, 0.2f, 0.4f));
-
-            if (hammerVisual == null)
-                hammerVisual = CreatePlaceholder("Hammer_Placeholder", PrimitiveType.Cylinder, new Vector3(0.06f, 0.06f, 0.06f), new Color(0.2f, 0.75f, 0.9f));
-
-            if (knifeVisual == null)
-                knifeVisual = CreatePlaceholder("Knife_Placeholder", PrimitiveType.Cube, new Vector3(0.015f, 0.025f, 0.16f), new Color(0.8f, 0.85f, 0.9f));
-
-            if (torchVisual == null)
-                torchVisual = CreatePlaceholder("Torch_Placeholder", PrimitiveType.Capsule, new Vector3(0.035f, 0.07f, 0.035f), new Color(1f, 0.55f, 0.1f));
+            normalHandVisual = SetupVisual(normalHandVisual, "NormalHand_Placeholder", PrimitiveType.Sphere, new Vector3(0.05f, 0.025f, 0.07f), new Color(0.85f, 0.7f, 0.6f));
+            scissorsVisual = SetupVisual(scissorsVisual, "Scissors_Placeholder", PrimitiveType.Cube, new Vector3(0.03f, 0.015f, 0.14f), new Color(0.9f, 0.2f, 0.4f));
+            hammerVisual = SetupVisual(hammerVisual, "Hammer_Placeholder", PrimitiveType.Cylinder, new Vector3(0.06f, 0.06f, 0.06f), new Color(0.2f, 0.75f, 0.9f));
+            knifeVisual = SetupVisual(knifeVisual, "Knife_Placeholder", PrimitiveType.Cube, new Vector3(0.015f, 0.025f, 0.16f), new Color(0.8f, 0.85f, 0.9f));
+            torchVisual = SetupVisual(torchVisual, "Torch_Placeholder", PrimitiveType.Capsule, new Vector3(0.035f, 0.07f, 0.035f), new Color(1f, 0.55f, 0.1f));
 
             if (GetComponentInChildren<ForearmButton>() == null)
             {
-                CreateForearmButton("Button_Scissors", ProstheticTool.Scissors, new Vector3(-0.025f, 0.03f, -0.04f), new Color(0.9f, 0.2f, 0.4f));
+                CreateForearmButton("Button_Scissors", ProstheticTool.Scissors, new Vector3(-0.025f, 0.03f, -0.04f), new Color(0.55f, 0.76f, 0.29f));
                 CreateForearmButton("Button_Hammer", ProstheticTool.Hammer, new Vector3(0.025f, 0.03f, -0.04f), new Color(0.2f, 0.75f, 0.9f));
-                CreateForearmButton("Button_Knife", ProstheticTool.Knife, new Vector3(-0.025f, 0.03f, -0.08f), new Color(0.55f, 0.76f, 0.29f));
+                CreateForearmButton("Button_Knife", ProstheticTool.Knife, new Vector3(-0.025f, 0.03f, -0.08f), new Color(0.9f, 0.15f, 0.15f));
                 CreateForearmButton("Button_Torch", ProstheticTool.Torch, new Vector3(0.025f, 0.03f, -0.08f), new Color(1f, 0.6f, 0f));
                 CreateForearmButton("Button_ResetHand", ProstheticTool.None, new Vector3(0f, 0.03f, -0.12f), new Color(0.8f, 0.8f, 0.8f));
             }
+        }
+
+        private GameObject SetupVisual(GameObject customVisual, string objName, PrimitiveType type, Vector3 scale, Color color)
+        {
+            if (customVisual != null)
+            {
+                if (!customVisual.scene.IsValid())
+                    customVisual = Instantiate(customVisual);
+
+                customVisual.transform.SetParent(anchorRoot, false);
+                customVisual.transform.localPosition = toolOffset;
+                return customVisual;
+            }
+
+            if (!createPlaceholderVisuals)
+                return null;
+
+            return CreatePlaceholder(objName, type, scale, color);
         }
 
         private GameObject CreatePlaceholder(string objName, PrimitiveType type, Vector3 scale, Color color)
