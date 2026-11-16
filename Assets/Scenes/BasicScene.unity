@@ -2386,6 +2386,7 @@ MonoBehaviour:
   - {fileID: 1784876222286750837}
   - {fileID: 3275366118301259951}
   - {fileID: 2677856196047161526}
+  - {fileID: 7455687298441942561}
   fader: {fileID: 1978654}
   blackoutStop: 1
   speed: 5
