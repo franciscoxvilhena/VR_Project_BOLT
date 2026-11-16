@@ -5,6 +5,10 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables; // XRI 3.x. Delete this 
 
 public class HideHandOnGrab : MonoBehaviour
 {
+    
+    [Header("Platform")]
+    public PlatformRide platformRide;   // drag the platform here
+    
     [Header("Grab")]
     public XRGrabInteractable grabInteractable;
     public Transform rightHandRoot;
@@ -50,6 +54,8 @@ public class HideHandOnGrab : MonoBehaviour
 
         hasFallen = true;
         sequence = StartCoroutine(FallSequence());
+        
+        if (platformRide != null) platformRide.Release();
     }
 
     void OnRelease(SelectExitEventArgs args)

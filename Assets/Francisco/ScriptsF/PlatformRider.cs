@@ -8,6 +8,11 @@ public class PlatformRide : MonoBehaviour
     public int blackoutStop = 1;
     public float speed = 0.8f, wait = 5f;
 
+    bool released;
+
+    // Called by HideHandOnGrab when the cube is grabbed
+    public void Release() => released = true;
+
     IEnumerator Start()
     {
         for (int i = 0; i < stops.Length; i++)
@@ -19,7 +24,11 @@ public class PlatformRide : MonoBehaviour
                 yield return null;
             }
             if (i == blackoutStop) yield return Fade(0);
-            yield return new WaitForSeconds(wait);
+
+            if (i == 0)
+                yield return new WaitUntil(() => released); // no timer, wait for the grab
+            else
+                yield return new WaitForSeconds(wait);
         }
     }
 
