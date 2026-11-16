@@ -181,10 +181,11 @@ public class ScissorsTool : MonoBehaviour
 
     private ScissorsCuttable FindTarget()
     {
-        Transform t = ZoneOrigin();
-        Vector3 center = t.position + t.rotation * zoneCenterOffset;
+        // The zone points where the hand points and covers the blades
+        controller.GetToolZone(controller.scissorsVisual, zoneCenterOffset, zoneHalfExtents, false,
+            out Vector3 center, out Vector3 half, out Quaternion rotation);
 
-        int count = Physics.OverlapBoxNonAlloc(center, zoneHalfExtents, hits, t.rotation,
+        int count = Physics.OverlapBoxNonAlloc(center, half, hits, rotation,
             cuttableLayers, QueryTriggerInteraction.Collide);
 
         ScissorsCuttable best = null;
@@ -215,9 +216,11 @@ public class ScissorsTool : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Transform t = controller != null ? ZoneOrigin() : transform;
+        if (controller == null) return;
+        controller.GetToolZone(controller.scissorsVisual, zoneCenterOffset, zoneHalfExtents, false,
+            out Vector3 center, out Vector3 half, out Quaternion rotation);
         Gizmos.color = new Color(0.9f, 0.2f, 0.4f);
-        Gizmos.matrix = Matrix4x4.TRS(t.position + t.rotation * zoneCenterOffset, t.rotation, Vector3.one);
-        Gizmos.DrawWireCube(Vector3.zero, zoneHalfExtents * 2f);
+        Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, half * 2f);
     }
 }

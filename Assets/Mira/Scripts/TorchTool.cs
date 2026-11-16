@@ -44,15 +44,26 @@ public class TorchTool : MonoBehaviour
 
     private void Start()
     {
-        // Start runs after every Awake, so the controller's placeholder torch already exists
+        EnsureFlame();
+    }
+
+    // Also called from Update: the torch model can be swapped after Start (duplicate controllers
+    // hand over to the main one), which destroys a placeholder flame attached to the old model.
+    private void EnsureFlame()
+    {
         if (flameVisual == null && createPlaceholderFlame && controller != null && controller.torchVisual != null)
         {
             flameVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             flameVisual.name = "Torch_Flame_Placeholder";
             Destroy(flameVisual.GetComponent<Collider>());
             flameVisual.transform.SetParent(controller.torchVisual.transform, false);
-            flameVisual.transform.position = BladeOrigin().position + BladeOrigin().rotation * zoneCenterOffset;
-            flameVisual.transform.localScale = Vector3.one * 0.6f;   // local to the (scaled) torch visual
+            // In front of the torch's tip, in the direction the hand points
+            controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true,
+                out Vector3 flameCenter, out _, out _);
+            flameVisual.transform.position = flameCenter;
+            // 6 cm across, whatever the scale of the torch model it is attached to
+            float parentScale = Mathf.Max(controller.torchVisual.transform.lossyScale.x, 1e-4f);
+            flameVisual.transform.localScale = Vector3.one * (0.06f / parentScale);
 
             var rend = flameVisual.GetComponent<Renderer>();
             if (rend != null) rend.material.color = new Color(1f, 0.5f, 0.1f);
@@ -81,10 +92,11 @@ public class TorchTool : MonoBehaviour
 
     private TorchBurnable FindTarget()
     {
-        Transform t = BladeOrigin();
-        Vector3 center = t.position + t.rotation * zoneCenterOffset;
+        // The flame zone starts at the torch's tip and points where the hand points
+        controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true,
+            out Vector3 center, out Vector3 half, out Quaternion rotation);
 
-        int count = Physics.OverlapBoxNonAlloc(center, zoneHalfExtents, hits, t.rotation,
+        int count = Physics.OverlapBoxNonAlloc(center, half, hits, rotation,
             burnableLayers, QueryTriggerInteraction.Collide);
 
         TorchBurnable best = null;
@@ -103,6 +115,8 @@ public class TorchTool : MonoBehaviour
 
     private void Update()
     {
+        if (flameVisual == null) EnsureFlame();
+
         bool bothMet = ToolSelected() && GestureOn();
 
         // Flame is on whenever the torch is equipped AND the gesture is held
@@ -167,9 +181,11 @@ public class TorchTool : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Transform t = controller != null ? BladeOrigin() : transform;
+        if (controller == null) return;
+        controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true,
+            out Vector3 center, out Vector3 half, out Quaternion rotation);
         Gizmos.color = new Color(1f, 0.5f, 0f);
-        Gizmos.matrix = Matrix4x4.TRS(t.position + t.rotation * zoneCenterOffset, t.rotation, Vector3.one);
-        Gizmos.DrawWireCube(Vector3.zero, zoneHalfExtents * 2f);
+        Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, half * 2f);
     }
 }

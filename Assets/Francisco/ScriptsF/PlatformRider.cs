@@ -32,8 +32,23 @@ public class PlatformRide : MonoBehaviour
         }
     }
 
+    // The fader only shows if it sits on the camera the player is actually looking through.
+    // In BasicScene it was placed on the camera of the disabled "XR Origin (XR Rig)", so move it
+    // to the active camera, keeping its local position and size.
+    void PutFaderOnActiveCamera()
+    {
+        if (fader == null || fader.gameObject.activeInHierarchy) return;
+
+        var cam = Camera.main;
+        if (cam == null) return;
+
+        fader.transform.SetParent(cam.transform, false);
+        Debug.Log("PlatformRide: moved the fader onto the active camera '" + cam.name + "'");
+    }
+
     IEnumerator Fade(float to)
     {
+        PutFaderOnActiveCamera();
         var m = fader.material;
         var c = m.color;
         while (c.a != to)

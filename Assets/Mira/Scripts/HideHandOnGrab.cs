@@ -28,6 +28,7 @@ public class HideHandOnGrab : MonoBehaviour
     [Range(0f, 1f)] public float fallSoundVolume = 1f;
 
     bool hasFallen;
+    bool holding;
     Coroutine sequence;
 
     void Reset()
@@ -53,15 +54,18 @@ public class HideHandOnGrab : MonoBehaviour
         if (hasFallen) return;
 
         hasFallen = true;
-        sequence = StartCoroutine(FallSequence());
-        
-        if (platformRide != null) platformRide.Release();
+        holding = true;
+        StartCoroutine(FallSequence());
     }
 
     void OnRelease(SelectExitEventArgs args)
     {
-        if (showAgainOnRelease && args.interactorObject.transform.IsChildOf(rightHandRoot))
+        if (!args.interactorObject.transform.IsChildOf(rightHandRoot)) return;
+
+        holding = false;
+        if (showAgainOnRelease)
         {
+            // Only the hand hiding is cancelled. The block keeps falling and the platform still leaves.
             if (sequence != null) StopCoroutine(sequence);
             SetVisible(true);
         }
@@ -96,14 +100,31 @@ public class HideHandOnGrab : MonoBehaviour
             Destroy(fx.gameObject, fx.main.duration + fx.main.startLifetime.constantMax);
         }
 
-        // 3. Delay, then hide the hand and forearm
+        // 3. The block has hit: release the platform, which fades to black and rides to the next room
+        if (platformRide != null) platformRide.Release();
+
+        // 4. Delay, then hide the hand and forearm (unless the player already let go)
+        if (holding || !showAgainOnRelease)
+            sequence = StartCoroutine(HideAfterDelay());
+    }
+
+    IEnumerator HideAfterDelay()
+    {
         yield return new WaitForSeconds(hideDelay);
         SetVisible(false);
     }
 
     public void SetVisible(bool visible)
     {
-        foreach (var r in renderersToHide)
-            r.enabled = visible;
+        if (renderersToHide != null)
+        {
+            foreach (var r in renderersToHide)
+                if (r != null) r.enabled = visible;
+        }
+
+        // The custom tracked arm replaces the default hand mesh, so hide/show it too.
+        var arms = FindAnyObjectByType<VRPrototype.TrackedArms>();
+        if (arms != null)
+            arms.SetArmVisible(VRPrototype.HandSide.Right, visible);
     }
 }

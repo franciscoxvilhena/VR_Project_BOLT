@@ -55,10 +55,11 @@ namespace VRPrototype
 
         private KnifeCuttable FindTarget()
         {
-            Transform t = BladeTransform();
-            Vector3 center = t.position + t.rotation * boxCenterOffset;
+            // The zone points where the hand points and covers the whole blade
+            controller.GetToolZone(controller.knifeVisual, boxCenterOffset, boxHalfExtents, false,
+                out Vector3 center, out Vector3 half, out Quaternion rotation);
 
-            int count = Physics.OverlapBoxNonAlloc(center, boxHalfExtents, hits, t.rotation,
+            int count = Physics.OverlapBoxNonAlloc(center, half, hits, rotation,
                 cuttableLayers, QueryTriggerInteraction.Collide);
 
             KnifeCuttable best = null;
@@ -137,10 +138,12 @@ namespace VRPrototype
 
         private void OnDrawGizmosSelected()
         {
-            Transform t = controller != null ? BladeTransform() : transform;
+            if (controller == null) return;
+            controller.GetToolZone(controller.knifeVisual, boxCenterOffset, boxHalfExtents, false,
+                out Vector3 center, out Vector3 half, out Quaternion rotation);
             Gizmos.color = Color.yellow;
-            Gizmos.matrix = Matrix4x4.TRS(t.position + t.rotation * boxCenterOffset, t.rotation, Vector3.one);
-            Gizmos.DrawWireCube(Vector3.zero, boxHalfExtents * 2f);
+            Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+            Gizmos.DrawWireCube(Vector3.zero, half * 2f);
         }
     }
 }
