@@ -32,6 +32,9 @@ public class TorchTool : MonoBehaviour
     private float heatTimer;
     private float lostTimer;
 
+    [SerializeField]
+    private bool debugLogs;
+
     private void Awake()
     {
         if (controller == null)
@@ -149,6 +152,9 @@ public class TorchTool : MonoBehaviour
                 ResetProgress();
             }
         }
+        if (debugLogs && Time.frameCount % 30 == 0)
+            Debug.Log($"Torch | toolSelected={ToolSelected()} gesture={GestureOn()} " +
+                      $"flame={(flameVisual != null)} target={(target != null ? target.name : "none")} heat={heatTimer:F1}");
     }
 
     private void ClearTarget()
@@ -172,4 +178,6 @@ public class TorchTool : MonoBehaviour
         Gizmos.matrix = Matrix4x4.TRS(t.position + t.rotation * zoneCenterOffset, t.rotation, Vector3.one);
         Gizmos.DrawWireCube(Vector3.zero, zoneHalfExtents * 2f);
     }
+
+
 }
