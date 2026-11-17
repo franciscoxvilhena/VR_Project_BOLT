@@ -35,12 +35,10 @@ namespace VRPrototype
                 frameSource = FindAnyObjectByType<WebcamHandFrameSource>();
         }
 
-        public Vector3 RestLocalPosition => restLocalPosition;
-
-        public void SetRestLocalPosition(Vector3 localPosition)
+        public Vector3 RestLocalPosition
         {
-            restLocalPosition = localPosition;
-            transform.localPosition = localPosition;
+            get => restLocalPosition;
+            set => transform.localPosition = restLocalPosition = value;
         }
 
         private void Update()

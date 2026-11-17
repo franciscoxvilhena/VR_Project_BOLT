@@ -42,34 +42,23 @@ public class TorchTool : MonoBehaviour
             gestureSystem = FindAnyObjectByType<HandGestureSystem>();
     }
 
-    private void Start()
-    {
-        EnsureFlame();
-    }
-
-    // Also called from Update: the torch model can be swapped after Start (duplicate controllers
-    // hand over to the main one), which destroys a placeholder flame attached to the old model.
+    // Runs every frame because the torch model can get swapped at runtime, which destroys the placeholder flame on it
     private void EnsureFlame()
     {
-        if (flameVisual == null && createPlaceholderFlame && controller != null && controller.torchVisual != null)
-        {
-            flameVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            flameVisual.name = "Torch_Flame_Placeholder";
-            Destroy(flameVisual.GetComponent<Collider>());
-            flameVisual.transform.SetParent(controller.torchVisual.transform, false);
-            // In front of the torch's tip, in the direction the hand points
-            controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true,
-                out Vector3 flameCenter, out _, out _);
-            flameVisual.transform.position = flameCenter;
-            // 6 cm across, whatever the scale of the torch model it is attached to
-            float parentScale = Mathf.Max(controller.torchVisual.transform.lossyScale.x, 1e-4f);
-            flameVisual.transform.localScale = Vector3.one * (0.06f / parentScale);
+        if (flameVisual != null || !createPlaceholderFlame || controller == null || controller.torchVisual == null) return;
 
-            var rend = flameVisual.GetComponent<Renderer>();
-            if (rend != null) rend.material.color = new Color(1f, 0.5f, 0.1f);
-        }
+        Transform torch = controller.torchVisual.transform;
+        flameVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flameVisual.name = "Torch_Flame_Placeholder";
+        Destroy(flameVisual.GetComponent<Collider>());
+        flameVisual.GetComponent<Renderer>().material.color = new Color(1f, 0.5f, 0.1f);
+        flameVisual.transform.SetParent(torch, false);
 
-        if (flameVisual != null) flameVisual.SetActive(false);
+        // just past the torch tip, 6cm wide no matter how the torch model is scaled
+        controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true, out Vector3 tip, out _, out _);
+        flameVisual.transform.position = tip;
+        flameVisual.transform.localScale = Vector3.one * (0.06f / Mathf.Max(torch.lossyScale.x, 1e-4f));
+        flameVisual.SetActive(false);
     }
 
     private bool ToolSelected()
@@ -81,13 +70,6 @@ public class TorchTool : MonoBehaviour
     {
         return gestureSystem != null && controller != null &&
                gestureSystem.GetGesture(controller.prostheticSide) == HandGesture.Torch;
-    }
-
-    private Transform BladeOrigin()
-    {
-        if (controller != null && controller.torchVisual != null)
-            return controller.torchVisual.transform;
-        return controller != null ? controller.transform : transform;
     }
 
     private TorchBurnable FindTarget()
@@ -115,7 +97,7 @@ public class TorchTool : MonoBehaviour
 
     private void Update()
     {
-        if (flameVisual == null) EnsureFlame();
+        EnsureFlame();
 
         bool bothMet = ToolSelected() && GestureOn();
 
