@@ -7,7 +7,7 @@ using UnityEngine.XR.Hands;
 namespace VRPrototype
 {
     /// <summary>
-    /// Shows the custom arm model (Assets/Francisco/ModelsF/Resources/Arms.fbx, exported from Arms1.blend by Assets/Francisco/ToolsF/export_arms.py)
+    /// Shows the custom arm model (Assets/Francisco/ModelsF/Resources/Arms.fbx, exported straight from Arms1_fixed.blend with Blender's FBX exporter)
     /// on both hands and drives its bones from the hand tracking data of an IHandFrameSource.
     ///
     /// It is added automatically next to the hand frame source in every scene that has one, so no scene
