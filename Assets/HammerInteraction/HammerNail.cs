@@ -54,12 +54,10 @@ public class HammerNail : MonoBehaviour
                 filter.gameObject.AddComponent<BoxCollider>().isTrigger = true;
         }
 
-        if (hammer.GetComponentInParent<Rigidbody>() == null)
-        {
-            Rigidbody body = hammer.AddComponent<Rigidbody>();
-            body.isKinematic = true;
-            body.useGravity = false;
-        }
+        Rigidbody body = hammer.GetComponentInParent<Rigidbody>(true);
+        if (body == null) body = hammer.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
     }
 
     void Update()
