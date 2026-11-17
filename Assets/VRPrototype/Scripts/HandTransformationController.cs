@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 
@@ -31,6 +32,57 @@ namespace VRPrototype
 
         private IHandFrameSource frameSource;
         private Transform anchorRoot;
+        private readonly Dictionary<GameObject, float> toolReach = new Dictionary<GameObject, float>();
+
+        // forward is where the hand points
+        public Quaternion ToolRotation => anchorRoot != null ? anchorRoot.rotation : transform.rotation;
+
+        // how far the tool model sticks out in front of where it's mounted (cached per model)
+        public float GetToolReach(GameObject visual)
+        {
+            if (visual == null) return 0f;
+            if (toolReach.TryGetValue(visual, out float reach)) return reach;
+
+            Vector3 forward = ToolRotation * Vector3.forward;
+            foreach (MeshFilter filter in visual.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filter.sharedMesh == null) continue;
+                Bounds b = filter.sharedMesh.bounds;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 sign = new Vector3((i & 1) * 2 - 1, (i & 2) - 1, (i & 4) / 2 - 1);
+                    Vector3 corner = filter.transform.TransformPoint(b.center + Vector3.Scale(b.extents, sign));
+                    reach = Mathf.Max(reach, Vector3.Dot(corner - visual.transform.position, forward));
+                }
+            }
+            return toolReach[visual] = reach;
+        }
+
+        // The box a tool works in. Points where the hand points no matter how the model is rotated and
+        // stretches to the model's tip. With startAtTip it starts at the tip instead (torch flame).
+        public void GetToolZone(GameObject visual, Vector3 centerOffset, Vector3 halfExtents, bool startAtTip,
+            out Vector3 center, out Vector3 half, out Quaternion rotation)
+        {
+            rotation = ToolRotation;
+            half = halfExtents;
+            Vector3 origin = visual != null ? visual.transform.position
+                : anchorRoot != null ? anchorRoot.position : transform.position;
+
+            float reach = GetToolReach(visual);
+            if (startAtTip)
+            {
+                centerOffset.z = Mathf.Max(centerOffset.z, reach + halfExtents.z);
+            }
+            else
+            {
+                float start = centerOffset.z - halfExtents.z;
+                float end = Mathf.Max(centerOffset.z + halfExtents.z, reach);
+                centerOffset.z = (start + end) / 2f;
+                half.z = (end - start) / 2f;
+            }
+
+            center = origin + rotation * centerOffset;
+        }
 
         private void Awake()
         {
@@ -166,6 +218,56 @@ namespace VRPrototype
             btn.toolToSelect = tool;
             btn.pressingHand = prostheticSide == HandSide.Right ? HandSide.Left : HandSide.Right;
         }
+
+        // Called by TrackedArms: the arm model is the hand now, so drop the placeholder hand
+        // and move the forearm buttons onto the model's forearm.
+        public void UseTrackedArm(Transform forearmAnchor, float buttonHeight)
+        {
+            normalHandVisual = Replace(normalHandVisual, null);
+            if (anchorRoot == null || forearmAnchor == null) return;
+
+            foreach (ForearmButton button in anchorRoot.GetComponentsInChildren<ForearmButton>(true))
+            {
+                Vector3 pos = button.RestLocalPosition;
+                pos.y = buttonHeight;
+                button.transform.SetParent(forearmAnchor, false);
+                button.RestLocalPosition = pos;
+            }
+        }
+
+        // Called by TrackedArms when there's a second controller for the same hand: this one drops its
+        // own buttons and placeholders and mirrors the main one, so scripts pointing at either still work.
+        public void FollowController(HandTransformationController main)
+        {
+            if (main == null || main == this) return;
+
+            if (anchorRoot != null)
+                foreach (ForearmButton button in anchorRoot.GetComponentsInChildren<ForearmButton>(true))
+                    Destroy(button.gameObject);
+
+            normalHandVisual = Replace(normalHandVisual, main.normalHandVisual);
+            scissorsVisual = Replace(scissorsVisual, main.scissorsVisual);
+            hammerVisual = Replace(hammerVisual, main.hammerVisual);
+            knifeVisual = Replace(knifeVisual, main.knifeVisual);
+            torchVisual = Replace(torchVisual, main.torchVisual);
+
+            main.onToolChanged.AddListener(tool => { if (currentTool != tool) TransformHand(tool); });
+            onToolChanged.AddListener(tool => { if (main.currentTool != tool) main.TransformHand(tool); });
+            if (currentTool != main.currentTool) TransformHand(main.currentTool);
+        }
+
+        // keeps a real model, otherwise destroys the placeholder and uses the replacement
+        private static GameObject Replace(GameObject visual, GameObject replacement)
+        {
+            if (IsCustom(visual)) return visual;
+            if (visual != null) Destroy(visual);
+            return replacement;
+        }
+
+        public bool HasCustomToolVisuals() =>
+            IsCustom(scissorsVisual) || IsCustom(hammerVisual) || IsCustom(knifeVisual) || IsCustom(torchVisual);
+
+        private static bool IsCustom(GameObject visual) => visual != null && !visual.name.EndsWith("_Placeholder");
 
         [ContextMenu("Transform To Normal Hand")]
         public void SelectNone() => TransformHand(ProstheticTool.None);

@@ -26,6 +26,7 @@ public class HammerNail : MonoBehaviour
     private float lastHitTime = -10f;
     private Vector3 lastHammerPos;
     private float hammerSpeed;
+    private GameObject preparedHammer;
 
     void Awake()
     {
@@ -33,8 +34,37 @@ public class HammerNail : MonoBehaviour
         if (outline != null) outline.OutlineColor = idleColor;
     }
 
+    void Start()
+    {
+        // Auto-find the references when they were not dragged in (as the knife/scissors/torch do)
+        if (tools == null) tools = FindAnyObjectByType<HandTransformationController>();
+        if (gestures == null && tools != null) gestures = tools.gestureSystem;
+        if (gestures == null) gestures = FindAnyObjectByType<HandGestureSystem>();
+    }
+
+    // The nail is hit through physics, so the hammer model needs a collider and a rigidbody.
+    // Add them when the model has none.
+    void PrepareHammer(GameObject hammer)
+    {
+        preparedHammer = hammer;
+
+        if (hammer.GetComponentInChildren<Collider>(true) == null)
+        {
+            foreach (MeshFilter filter in hammer.GetComponentsInChildren<MeshFilter>(true))
+                filter.gameObject.AddComponent<BoxCollider>().isTrigger = true;
+        }
+
+        Rigidbody body = hammer.GetComponentInParent<Rigidbody>(true);
+        if (body == null) body = hammer.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        body.useGravity = false;
+    }
+
     void Update()
     {
+        if (tools != null && tools.hammerVisual != null && tools.hammerVisual != preparedHammer)
+            PrepareHammer(tools.hammerVisual);
+
         // Track hammer speed so a slow push doesn't count as a strike
         if (tools != null && tools.hammerVisual != null)
         {
@@ -64,7 +94,7 @@ public class HammerNail : MonoBehaviour
         if (hits >= hitsNeeded) return;
         if (tools == null || tools.hammerVisual == null) return;
         if (tools.currentTool != ProstheticTool.Hammer) return;
-        if (gestures.GetGesture(HandSide.Right) != HandGesture.Fist) return;
+        if (gestures == null || gestures.GetGesture(tools.prostheticSide) != HandGesture.Fist) return;
 
         // Only count the hammer, not the hand or anything else
         if (!other.transform.IsChildOf(tools.hammerVisual.transform)) return;

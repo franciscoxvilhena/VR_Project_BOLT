@@ -5,6 +5,9 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables; // XRI 3.x. Delete this 
 
 public class HideHandOnGrab : MonoBehaviour
 {
+    [Header("Platform")]
+    public PlatformRide platformRide;
+
     [Header("Grab")]
     public XRGrabInteractable grabInteractable;
     public Transform rightHandRoot;
@@ -24,6 +27,7 @@ public class HideHandOnGrab : MonoBehaviour
     [Range(0f, 1f)] public float fallSoundVolume = 1f;
 
     bool hasFallen;
+    bool holding;
     Coroutine sequence;
 
     void Reset()
@@ -49,13 +53,18 @@ public class HideHandOnGrab : MonoBehaviour
         if (hasFallen) return;
 
         hasFallen = true;
-        sequence = StartCoroutine(FallSequence());
+        holding = true;
+        StartCoroutine(FallSequence());
     }
 
     void OnRelease(SelectExitEventArgs args)
     {
-        if (showAgainOnRelease && args.interactorObject.transform.IsChildOf(rightHandRoot))
+        if (!args.interactorObject.transform.IsChildOf(rightHandRoot)) return;
+
+        holding = false;
+        if (showAgainOnRelease)
         {
+            // only cancels the hiding, the block still falls and the platform still leaves
             if (sequence != null) StopCoroutine(sequence);
             SetVisible(true);
         }
@@ -90,7 +99,16 @@ public class HideHandOnGrab : MonoBehaviour
             Destroy(fx.gameObject, fx.main.duration + fx.main.startLifetime.constantMax);
         }
 
-        // 3. Delay, then hide the hand and forearm
+        // 3. Block landed, send the platform off
+        if (platformRide != null) platformRide.Release();
+
+        // 4. Hide the hand after a delay (unless the player already let go)
+        if (holding || !showAgainOnRelease)
+            sequence = StartCoroutine(HideAfterDelay());
+    }
+
+    IEnumerator HideAfterDelay()
+    {
         yield return new WaitForSeconds(hideDelay);
         SetVisible(false);
     }
@@ -98,6 +116,10 @@ public class HideHandOnGrab : MonoBehaviour
     public void SetVisible(bool visible)
     {
         foreach (var r in renderersToHide)
-            r.enabled = visible;
+            if (r != null) r.enabled = visible;
+
+        // the tracked arm model is the hand now, so hide that too
+        var arms = FindAnyObjectByType<VRPrototype.TrackedArms>();
+        if (arms != null) arms.SetArmVisible(VRPrototype.HandSide.Right, visible);
     }
 }

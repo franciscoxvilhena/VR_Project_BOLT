@@ -45,23 +45,23 @@ public class TorchTool : MonoBehaviour
             gestureSystem = FindAnyObjectByType<HandGestureSystem>();
     }
 
-    private void Start()
+    // Runs every frame because the torch model can get swapped at runtime, which destroys the placeholder flame on it
+    private void EnsureFlame()
     {
-        // Start runs after every Awake, so the controller's placeholder torch already exists
-        if (flameVisual == null && createPlaceholderFlame && controller != null && controller.torchVisual != null)
-        {
-            flameVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            flameVisual.name = "Torch_Flame_Placeholder";
-            Destroy(flameVisual.GetComponent<Collider>());
-            flameVisual.transform.SetParent(controller.torchVisual.transform, false);
-            flameVisual.transform.position = BladeOrigin().position + BladeOrigin().rotation * zoneCenterOffset;
-            flameVisual.transform.localScale = Vector3.one * 0.6f;   // local to the (scaled) torch visual
+        if (flameVisual != null || !createPlaceholderFlame || controller == null || controller.torchVisual == null) return;
 
-            var rend = flameVisual.GetComponent<Renderer>();
-            if (rend != null) rend.material.color = new Color(1f, 0.5f, 0.1f);
-        }
+        Transform torch = controller.torchVisual.transform;
+        flameVisual = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flameVisual.name = "Torch_Flame_Placeholder";
+        Destroy(flameVisual.GetComponent<Collider>());
+        flameVisual.GetComponent<Renderer>().material.color = new Color(1f, 0.5f, 0.1f);
+        flameVisual.transform.SetParent(torch, false);
 
-        if (flameVisual != null) flameVisual.SetActive(false);
+        // just past the torch tip, 6cm wide no matter how the torch model is scaled
+        controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true, out Vector3 tip, out _, out _);
+        flameVisual.transform.position = tip;
+        flameVisual.transform.localScale = Vector3.one * (0.06f / Mathf.Max(torch.lossyScale.x, 1e-4f));
+        flameVisual.SetActive(false);
     }
 
     private bool ToolSelected()
@@ -75,19 +75,13 @@ public class TorchTool : MonoBehaviour
                gestureSystem.GetGesture(controller.prostheticSide) == HandGesture.Torch;
     }
 
-    private Transform BladeOrigin()
-    {
-        if (controller != null && controller.torchVisual != null)
-            return controller.torchVisual.transform;
-        return controller != null ? controller.transform : transform;
-    }
-
     private TorchBurnable FindTarget()
     {
-        Transform t = BladeOrigin();
-        Vector3 center = t.position + t.rotation * zoneCenterOffset;
+        // The flame zone starts at the torch's tip and points where the hand points
+        controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true,
+            out Vector3 center, out Vector3 half, out Quaternion rotation);
 
-        int count = Physics.OverlapBoxNonAlloc(center, zoneHalfExtents, hits, t.rotation,
+        int count = Physics.OverlapBoxNonAlloc(center, half, hits, rotation,
             burnableLayers, QueryTriggerInteraction.Collide);
 
         TorchBurnable best = null;
@@ -106,6 +100,8 @@ public class TorchTool : MonoBehaviour
 
     private void Update()
     {
+        EnsureFlame();
+
         bool bothMet = ToolSelected() && GestureOn();
 
         // Flame is on whenever the torch is equipped AND the gesture is held
@@ -173,10 +169,12 @@ public class TorchTool : MonoBehaviour
 
     private void OnDrawGizmosSelected()
     {
-        Transform t = controller != null ? BladeOrigin() : transform;
+        if (controller == null) return;
+        controller.GetToolZone(controller.torchVisual, zoneCenterOffset, zoneHalfExtents, true,
+            out Vector3 center, out Vector3 half, out Quaternion rotation);
         Gizmos.color = new Color(1f, 0.5f, 0f);
-        Gizmos.matrix = Matrix4x4.TRS(t.position + t.rotation * zoneCenterOffset, t.rotation, Vector3.one);
-        Gizmos.DrawWireCube(Vector3.zero, zoneHalfExtents * 2f);
+        Gizmos.matrix = Matrix4x4.TRS(center, rotation, Vector3.one);
+        Gizmos.DrawWireCube(Vector3.zero, half * 2f);
     }
 
 

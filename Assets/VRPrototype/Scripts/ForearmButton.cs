@@ -35,6 +35,12 @@ namespace VRPrototype
                 frameSource = FindAnyObjectByType<WebcamHandFrameSource>();
         }
 
+        public Vector3 RestLocalPosition
+        {
+            get => restLocalPosition;
+            set => transform.localPosition = restLocalPosition = value;
+        }
+
         private void Update()
         {
             CheckFingerProximity();
