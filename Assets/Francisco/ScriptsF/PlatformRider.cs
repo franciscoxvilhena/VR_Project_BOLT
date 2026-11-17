@@ -10,45 +10,33 @@ public class PlatformRide : MonoBehaviour
 
     bool released;
 
-    // Called by HideHandOnGrab when the cube is grabbed
+    // called by HideHandOnGrab once the block lands
     public void Release() => released = true;
 
     IEnumerator Start()
     {
         for (int i = 0; i < stops.Length; i++)
         {
+            Vector3 target = stops[i].position;
             if (i == blackoutStop) yield return Fade(1);
-            while (transform.position != stops[i].position)
+            while (transform.position != target)
             {
-                transform.position = Vector3.MoveTowards(transform.position, stops[i].position, speed * Time.deltaTime);
+                transform.position = Vector3.MoveTowards(transform.position, target, speed * Time.deltaTime);
                 yield return null;
             }
             if (i == blackoutStop) yield return Fade(0);
 
-            if (i == 0)
-                yield return new WaitUntil(() => released); // no timer, wait for the grab
-            else
-                yield return new WaitForSeconds(wait);
+            if (i == 0) yield return new WaitUntil(() => released);
+            else yield return new WaitForSeconds(wait);
         }
-    }
-
-    // The fader only shows if it sits on the camera the player is actually looking through.
-    // In BasicScene it was placed on the camera of the disabled "XR Origin (XR Rig)", so move it
-    // to the active camera, keeping its local position and size.
-    void PutFaderOnActiveCamera()
-    {
-        if (fader == null || fader.gameObject.activeInHierarchy) return;
-
-        var cam = Camera.main;
-        if (cam == null) return;
-
-        fader.transform.SetParent(cam.transform, false);
-        Debug.Log("PlatformRide: moved the fader onto the active camera '" + cam.name + "'");
     }
 
     IEnumerator Fade(float to)
     {
-        PutFaderOnActiveCamera();
+        // the fader has to be on the camera we're actually looking through
+        if (!fader.gameObject.activeInHierarchy && Camera.main != null)
+            fader.transform.SetParent(Camera.main.transform, false);
+
         var m = fader.material;
         var c = m.color;
         while (c.a != to)

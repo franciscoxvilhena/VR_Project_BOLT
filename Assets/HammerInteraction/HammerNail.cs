@@ -36,40 +36,32 @@ public class HammerNail : MonoBehaviour
 
     void Start()
     {
-        // Auto-find the references when they were not dragged in (as the knife/scissors/torch do)
+        // find them if they weren't dragged in
         if (tools == null) tools = FindAnyObjectByType<HandTransformationController>();
         if (gestures == null && tools != null) gestures = tools.gestureSystem;
         if (gestures == null) gestures = FindAnyObjectByType<HandGestureSystem>();
     }
 
-    // The nail is hit through physics, so the hammer model needs a collider and a rigidbody.
-    // Add them when the model has none.
+    // the hit is detected with physics, so the hammer model needs a collider and a rigidbody
     void PrepareHammer(GameObject hammer)
     {
         preparedHammer = hammer;
 
         if (hammer.GetComponentInChildren<Collider>(true) == null)
-        {
             foreach (MeshFilter filter in hammer.GetComponentsInChildren<MeshFilter>(true))
                 filter.gameObject.AddComponent<BoxCollider>().isTrigger = true;
-        }
 
         if (hammer.GetComponentInParent<Rigidbody>() == null)
-        {
-            Rigidbody body = hammer.AddComponent<Rigidbody>();
-            body.isKinematic = true;
-            body.useGravity = false;
-        }
+            hammer.AddComponent<Rigidbody>().isKinematic = true;
     }
 
     void Update()
     {
-        if (tools != null && tools.hammerVisual != null && tools.hammerVisual != preparedHammer)
-            PrepareHammer(tools.hammerVisual);
-
         // Track hammer speed so a slow push doesn't count as a strike
         if (tools != null && tools.hammerVisual != null)
         {
+            if (tools.hammerVisual != preparedHammer) PrepareHammer(tools.hammerVisual);
+
             Vector3 pos = tools.hammerVisual.transform.position;
             if (Time.deltaTime > 0f)
                 hammerSpeed = (pos - lastHammerPos).magnitude / Time.deltaTime;

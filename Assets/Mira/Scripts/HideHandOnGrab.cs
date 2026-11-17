@@ -5,10 +5,9 @@ using UnityEngine.XR.Interaction.Toolkit.Interactables; // XRI 3.x. Delete this 
 
 public class HideHandOnGrab : MonoBehaviour
 {
-    
     [Header("Platform")]
-    public PlatformRide platformRide;   // drag the platform here
-    
+    public PlatformRide platformRide;
+
     [Header("Grab")]
     public XRGrabInteractable grabInteractable;
     public Transform rightHandRoot;
@@ -65,7 +64,7 @@ public class HideHandOnGrab : MonoBehaviour
         holding = false;
         if (showAgainOnRelease)
         {
-            // Only the hand hiding is cancelled. The block keeps falling and the platform still leaves.
+            // only cancels the hiding, the block still falls and the platform still leaves
             if (sequence != null) StopCoroutine(sequence);
             SetVisible(true);
         }
@@ -100,10 +99,10 @@ public class HideHandOnGrab : MonoBehaviour
             Destroy(fx.gameObject, fx.main.duration + fx.main.startLifetime.constantMax);
         }
 
-        // 3. The block has hit: release the platform, which fades to black and rides to the next room
+        // 3. Block landed, send the platform off
         if (platformRide != null) platformRide.Release();
 
-        // 4. Delay, then hide the hand and forearm (unless the player already let go)
+        // 4. Hide the hand after a delay (unless the player already let go)
         if (holding || !showAgainOnRelease)
             sequence = StartCoroutine(HideAfterDelay());
     }
@@ -116,15 +115,11 @@ public class HideHandOnGrab : MonoBehaviour
 
     public void SetVisible(bool visible)
     {
-        if (renderersToHide != null)
-        {
-            foreach (var r in renderersToHide)
-                if (r != null) r.enabled = visible;
-        }
+        foreach (var r in renderersToHide)
+            if (r != null) r.enabled = visible;
 
-        // The custom tracked arm replaces the default hand mesh, so hide/show it too.
+        // the tracked arm model is the hand now, so hide that too
         var arms = FindAnyObjectByType<VRPrototype.TrackedArms>();
-        if (arms != null)
-            arms.SetArmVisible(VRPrototype.HandSide.Right, visible);
+        if (arms != null) arms.SetArmVisible(VRPrototype.HandSide.Right, visible);
     }
 }

@@ -87,13 +87,6 @@ public class ScissorsTool : MonoBehaviour
                gestureSystem.GetGesture(controller.prostheticSide) == HandGesture.Scissors;
     }
 
-    private Transform ZoneOrigin()
-    {
-        if (controller != null && controller.scissorsVisual != null)
-            return controller.scissorsVisual.transform;
-        return controller != null ? controller.transform : transform;
-    }
-
     private void Update()
     {
         if (!ToolSelected())

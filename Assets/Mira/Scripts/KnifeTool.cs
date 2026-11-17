@@ -47,12 +47,6 @@ namespace VRPrototype
             return toolSelected && gestureOk;
         }
 
-        private Transform BladeTransform()
-        {
-            if (controller == null) return transform;
-            return controller.knifeVisual != null ? controller.knifeVisual.transform : controller.transform;
-        }
-
         private KnifeCuttable FindTarget()
         {
             // The zone points where the hand points and covers the whole blade
