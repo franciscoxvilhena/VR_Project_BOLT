@@ -15,12 +15,17 @@ public class BoltCompanion : MonoBehaviour
     [Header("Test Setup")]
     public bool skipToTutorialRoom = true;
 
-    [Header("Follow & Hover")]
-    public bool followPlayer = true;
-    public float followDistance = 1.35f;
-    public float heightOffset = -0.08f;
-    public float sideOffset = 0.35f;
-    public float repositionDistance = 0.75f;
+    [Header("Vision Roaming")]
+    public bool roamInVision = true;
+    public float minRoamDistance = 1.25f;
+    public float maxRoamDistance = 2.2f;
+    public float visionHalfAngle = 32f;
+    public float minHeightOffset = -0.08f;
+    public float maxHeightOffset = 0.32f;
+    public float minStepDistance = 0.55f;
+    public float minWaitAtPoint = 1.4f;
+    public float maxWaitAtPoint = 3.5f;
+    public float obstacleCheckRadius = 0.25f;
 
     [Header("Hand Reactions")]
     public float personalSpaceRadius = 0.32f;
@@ -37,7 +42,8 @@ public class BoltCompanion : MonoBehaviour
     public AudioClip[] teaseClips;
 
     private IHandFrameSource frameSource;
-    private float sideSign = 1f;
+    private float nextRoamTime;
+    private float outOfViewTimer;
     private float lastReactionTime = -10f;
     private float lastActionTime;
     private int teaseStep;
@@ -58,9 +64,12 @@ public class BoltCompanion : MonoBehaviour
             platformRide.transform.position = platformRide.stops[2].position;
         }
 
+        if (bolt != null)
+            bolt.onArrived.AddListener(OnBoltArrived);
+
         if (bolt != null && playerHead != null)
         {
-            Vector3 startCenter = GetHoverTarget();
+            Vector3 startCenter = PickVisionPoint();
             bolt.transform.position = startCenter - Vector3.up * bolt.bodyCenterHeight;
             Vector3 flatLook = playerHead.position - bolt.transform.position;
             flatLook.y = 0f;
@@ -73,6 +82,7 @@ public class BoltCompanion : MonoBehaviour
 
         HookTaskEvents();
         lastActionTime = Time.time;
+        nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
 
         if (bolt != null)
             bolt.SetEmotion(BoltEmotion.Kind);
@@ -81,6 +91,9 @@ public class BoltCompanion : MonoBehaviour
 
     private void OnDestroy()
     {
+        if (bolt != null)
+            bolt.onArrived.RemoveListener(OnBoltArrived);
+
         if (toolController != null)
             toolController.onToolChanged.RemoveListener(OnToolChanged);
 
@@ -110,13 +123,23 @@ public class BoltCompanion : MonoBehaviour
 
         if (playerHead != null && !bolt.IsFlying)
         {
-            bolt.FaceTowards(playerHead.position, 0.6f);
+            bolt.FaceTowards(playerHead.position, 0.7f);
 
-            if (followPlayer)
+            if (IsOutOfView())
             {
-                Vector3 desired = GetHoverTarget();
-                if (Vector3.Distance(bolt.BodyCenter, desired) > repositionDistance)
-                    bolt.FlyTo(desired, playerHead);
+                outOfViewTimer += Time.deltaTime;
+                if (outOfViewTimer >= 0.45f)
+                {
+                    outOfViewTimer = 0f;
+                    FlyToRandomVisionPoint();
+                }
+            }
+            else
+            {
+                outOfViewTimer = 0f;
+
+                if (roamInVision && Time.time >= nextRoamTime)
+                    FlyToRandomVisionPoint();
             }
         }
 
@@ -193,19 +216,83 @@ public class BoltCompanion : MonoBehaviour
         }
     }
 
-    private Vector3 GetHoverTarget()
+    private Vector3 GetHeadFlatForward()
     {
         if (playerHead == null)
-            return bolt != null ? bolt.BodyCenter : transform.position;
+            return Vector3.right;
 
         Vector3 forward = playerHead.forward;
         forward.y = 0f;
         if (forward.sqrMagnitude < 0.001f)
-            forward = Vector3.forward;
-        forward.Normalize();
+            return Vector3.right;
 
-        Vector3 right = Vector3.Cross(Vector3.up, forward).normalized;
-        return playerHead.position + forward * followDistance + Vector3.up * heightOffset + right * (sideOffset * sideSign);
+        return forward.normalized;
+    }
+
+    private bool IsOutOfView()
+    {
+        if (playerHead == null || bolt == null)
+            return false;
+
+        Vector3 toBolt = bolt.BodyCenter - playerHead.position;
+        float dist = toBolt.magnitude;
+        if (dist < 0.7f || dist > maxRoamDistance + 0.8f)
+            return true;
+
+        toBolt.y = 0f;
+        if (toBolt.sqrMagnitude < 0.001f)
+            return false;
+
+        float angle = Vector3.Angle(GetHeadFlatForward(), toBolt.normalized);
+        return angle > visionHalfAngle + 20f;
+    }
+
+    private Vector3 PickVisionPoint()
+    {
+        if (playerHead == null)
+            return bolt != null ? bolt.BodyCenter : transform.position;
+
+        Vector3 headForward = GetHeadFlatForward();
+        Vector3 toCurrent = bolt != null ? bolt.BodyCenter - playerHead.position : headForward;
+        toCurrent.y = 0f;
+        float currentSide = toCurrent.sqrMagnitude > 0.001f
+            ? Vector3.SignedAngle(headForward, toCurrent.normalized, Vector3.up)
+            : 0f;
+
+        for (int i = 0; i < 10; i++)
+        {
+            float yaw;
+            if (i < 4 || Random.value < 0.6f)
+                yaw = currentSide >= 0f ? Random.Range(-visionHalfAngle, -4f) : Random.Range(4f, visionHalfAngle);
+            else
+                yaw = Random.Range(-visionHalfAngle, visionHalfAngle);
+
+            float dist = Random.Range(minRoamDistance, maxRoamDistance);
+            float height = Random.Range(minHeightOffset, maxHeightOffset);
+            Vector3 dir = (Quaternion.Euler(0f, yaw, 0f) * headForward).normalized;
+            Vector3 candidate = playerHead.position + dir * dist + Vector3.up * height;
+
+            Vector3 rayVec = candidate - playerHead.position;
+            float rayLen = rayVec.magnitude;
+            if (rayLen > 0.01f && Physics.Raycast(playerHead.position, rayVec / rayLen, out RaycastHit hit, rayLen + obstacleCheckRadius, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (bolt == null || !hit.transform.IsChildOf(bolt.transform))
+                    candidate = hit.point - (rayVec / rayLen) * (obstacleCheckRadius + 0.1f);
+            }
+
+            bool hasClearance = !Physics.CheckSphere(candidate, obstacleCheckRadius, ~0, QueryTriggerInteraction.Ignore);
+            bool farEnough = bolt == null || Vector3.Distance(candidate, bolt.BodyCenter) >= minStepDistance;
+            if (hasClearance && farEnough)
+                return candidate;
+        }
+
+        return playerHead.position + headForward * minRoamDistance + Vector3.up * 0.05f;
+    }
+
+    private void OnBoltArrived()
+    {
+        outOfViewTimer = 0f;
+        nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
     }
 
     private void OnToolChanged(ProstheticTool tool)
@@ -231,9 +318,9 @@ public class BoltCompanion : MonoBehaviour
     private void OnTaskCompleted()
     {
         lastActionTime = Time.time;
+        lastReactionTime = Time.time;
         bolt.SetEmotion(BoltEmotion.Laugh);
-        sideSign *= -1f;
-        bolt.FlyTo(GetHoverTarget(), playerHead);
+        FlyToRandomVisionPoint(false);
         PlayRandomClip(taskDoneClips);
     }
 
@@ -262,12 +349,13 @@ public class BoltCompanion : MonoBehaviour
                 lastReactionTime = Time.time;
                 lastActionTime = Time.time;
                 bolt.SetEmotion(BoltEmotion.Angry);
-                Vector3 away = (boltCenter - handPos);
+                Vector3 away = boltCenter - handPos;
                 away.y = 0f;
                 if (away.sqrMagnitude < 0.001f)
                     away = bolt.transform.position - (playerHead != null ? playerHead.position : Vector3.zero);
                 away.y = 0f;
                 away.Normalize();
+                nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
                 bolt.FlyTo(boltCenter + away * 0.7f + Vector3.up * 0.1f, playerHead);
                 PlayRandomClip(dangerClips);
                 return;
@@ -283,9 +371,8 @@ public class BoltCompanion : MonoBehaviour
                 }
                 else
                 {
-                    sideSign *= -1f;
                     bolt.SetEmotion(BoltEmotion.Troll);
-                    bolt.FlyTo(GetHoverTarget(), playerHead);
+                    FlyToRandomVisionPoint(false);
                 }
                 return;
             }
@@ -334,13 +421,13 @@ public class BoltCompanion : MonoBehaviour
     private void TriggerIdleTease()
     {
         lastActionTime = Time.time;
-        sideSign *= -1f;
+        lastReactionTime = Time.time;
 
         BoltEmotion[] teaseEmotions = { BoltEmotion.Troll, BoltEmotion.Sad, BoltEmotion.Laugh };
         bolt.SetEmotion(teaseEmotions[teaseStep % teaseEmotions.Length]);
         teaseStep++;
 
-        bolt.FlyTo(GetHoverTarget(), playerHead);
+        FlyToRandomVisionPoint(false);
         PlayRandomClip(teaseClips);
     }
 
@@ -356,7 +443,7 @@ public class BoltCompanion : MonoBehaviour
         else if (kb.digit4Key.wasPressedThisFrame) SetAngry();
         else if (kb.digit5Key.wasPressedThisFrame) SetSad();
         else if (kb.digit6Key.wasPressedThisFrame) SetTroll();
-        else if (kb.gKey.wasPressedThisFrame) SwitchSide();
+        else if (kb.gKey.wasPressedThisFrame) FlyToRandomVisionPoint();
     }
 
     private void PlayRandomClip(AudioClip[] clips)
@@ -411,11 +498,26 @@ public class BoltCompanion : MonoBehaviour
         if (bolt != null) bolt.SetEmotion(BoltEmotion.Troll);
     }
 
-    [ContextMenu("Fly/Switch Side")]
-    public void SwitchSide()
+    [ContextMenu("Fly/Next Random Point")]
+    public void FlyToRandomVisionPoint()
     {
-        lastActionTime = Time.time;
-        sideSign *= -1f;
-        if (bolt != null) bolt.FlyTo(GetHoverTarget(), playerHead);
+        FlyToRandomVisionPoint(true);
+    }
+
+    private void FlyToRandomVisionPoint(bool varyEmotion)
+    {
+        if (bolt == null)
+            return;
+
+        nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
+        outOfViewTimer = 0f;
+
+        if (varyEmotion && Time.time - lastReactionTime >= reactionCooldown && Random.value < 0.45f)
+        {
+            BoltEmotion[] roamEmotions = { BoltEmotion.Standard, BoltEmotion.Kind, BoltEmotion.Troll, BoltEmotion.Laugh };
+            bolt.SetEmotion(roamEmotions[Random.Range(0, roamEmotions.Length)]);
+        }
+
+        bolt.FlyTo(PickVisionPoint(), playerHead);
     }
 }

@@ -540,11 +540,16 @@ MonoBehaviour:
   gestureSystem: {fileID: 0}
   platformRide: {fileID: 0}
   skipToTutorialRoom: 1
-  followPlayer: 1
-  followDistance: 1.35
-  heightOffset: -0.08
-  sideOffset: 0.35
-  repositionDistance: 0.75
+  roamInVision: 1
+  minRoamDistance: 1.25
+  maxRoamDistance: 2.2
+  visionHalfAngle: 32
+  minHeightOffset: -0.08
+  maxHeightOffset: 0.32
+  minStepDistance: 0.55
+  minWaitAtPoint: 1.4
+  maxWaitAtPoint: 3.5
+  obstacleCheckRadius: 0.25
   personalSpaceRadius: 0.32
   dangerToolRadius: 0.55
   reactionCooldown: 2
