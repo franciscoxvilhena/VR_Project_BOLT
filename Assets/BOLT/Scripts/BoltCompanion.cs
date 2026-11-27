@@ -27,9 +27,9 @@ public class BoltCompanion : MonoBehaviour
     public float visionHalfAngle = 32f;
     public float minHeightOffset = -0.08f;
     public float maxHeightOffset = 0.32f;
-    public float minStepDistance = 0.55f;
-    public float minWaitAtPoint = 1.4f;
-    public float maxWaitAtPoint = 3.5f;
+    public float minStepDistance = 0.6f;
+    public float minWaitAtPoint = 1.8f;
+    public float maxWaitAtPoint = 4.2f;
     public float obstacleCheckRadius = 0.25f;
 
     [Header("Hand Reactions")]
@@ -53,6 +53,8 @@ public class BoltCompanion : MonoBehaviour
     private float lastReactionTime = -10f;
     private float emotionLockUntil = -10f;
     private float lastActionTime;
+    private Vector3 glanceWorldPoint;
+    private float glanceUntil = -10f;
     private int teaseStep;
 
     private readonly List<HammerNail> nails = new List<HammerNail>();
@@ -77,11 +79,7 @@ public class BoltCompanion : MonoBehaviour
         if (bolt != null && playerHead != null)
         {
             Vector3 startCenter = PickVisionPoint(false);
-            bolt.transform.position = startCenter - Vector3.up * bolt.bodyCenterHeight;
-            Vector3 flatLook = playerHead.position - bolt.transform.position;
-            flatLook.y = 0f;
-            if (flatLook.sqrMagnitude > 0.0001f)
-                bolt.transform.rotation = Quaternion.LookRotation(flatLook.normalized, Vector3.up) * Quaternion.Euler(0f, bolt.modelYawOffset, 0f);
+            bolt.TeleportTo(startCenter, playerHead.position);
         }
 
         if (autoReactToSceneTasks)
@@ -134,7 +132,10 @@ public class BoltCompanion : MonoBehaviour
 
         if (playerHead != null && !bolt.IsFlying)
         {
-            bolt.FaceTowards(playerHead.position, 0.7f);
+            if (Time.time < glanceUntil)
+                bolt.FaceTowards(glanceWorldPoint, 1.15f);
+            else
+                bolt.FaceTowards(playerHead.position, 0.75f);
 
             if (IsOutOfView())
             {
@@ -313,6 +314,12 @@ public class BoltCompanion : MonoBehaviour
         if (!autoReactToSceneTasks)
             return;
 
+        if (toolController != null && TryGetHandPoint(toolController.prostheticSide, out Vector3 handPoint))
+        {
+            glanceWorldPoint = handPoint;
+            glanceUntil = Time.time + 0.9f;
+        }
+
         if (tool == ProstheticTool.Hammer)
             TriggerEmotion(BoltEmotion.Laugh);
         else if (tool == ProstheticTool.Scissors)
@@ -406,7 +413,7 @@ public class BoltCompanion : MonoBehaviour
 
     private bool TryGetHandPoint(HandSide side, out Vector3 point)
     {
-        HandFrame frame = frameSource.GetFrame(side);
+        HandFrame frame = frameSource != null && frameSource.IsRunning ? frameSource.GetFrame(side) : null;
         if (frame == null || !frame.IsTracked)
         {
             point = Vector3.zero;
@@ -518,6 +525,7 @@ public class BoltCompanion : MonoBehaviour
         emotionLockUntil = Time.time + triggeredEmotionHoldTime;
         nextRoamTime = Time.time + UnityEngine.Random.Range(minWaitAtPoint, maxWaitAtPoint);
         outOfViewTimer = 0f;
+        glanceUntil = -10f;
 
         if (tauntClips != null && tauntClips.Length > 0)
             PlayRandomClip(tauntClips);
