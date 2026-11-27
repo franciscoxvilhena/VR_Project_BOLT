@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -14,6 +15,10 @@ public class BoltCompanion : MonoBehaviour
 
     [Header("Test Setup")]
     public bool skipToTutorialRoom = true;
+
+    [Header("Task Triggers")]
+    public bool autoReactToSceneTasks = true;
+    public float triggeredEmotionHoldTime = 6f;
 
     [Header("Vision Roaming")]
     public bool roamInVision = true;
@@ -40,11 +45,13 @@ public class BoltCompanion : MonoBehaviour
     public AudioClip[] dangerClips;
     public AudioClip[] taskDoneClips;
     public AudioClip[] teaseClips;
+    public AudioClip[] tauntClips;
 
     private IHandFrameSource frameSource;
     private float nextRoamTime;
     private float outOfViewTimer;
     private float lastReactionTime = -10f;
+    private float emotionLockUntil = -10f;
     private float lastActionTime;
     private int teaseStep;
 
@@ -69,7 +76,7 @@ public class BoltCompanion : MonoBehaviour
 
         if (bolt != null && playerHead != null)
         {
-            Vector3 startCenter = PickVisionPoint();
+            Vector3 startCenter = PickVisionPoint(false);
             bolt.transform.position = startCenter - Vector3.up * bolt.bodyCenterHeight;
             Vector3 flatLook = playerHead.position - bolt.transform.position;
             flatLook.y = 0f;
@@ -77,12 +84,16 @@ public class BoltCompanion : MonoBehaviour
                 bolt.transform.rotation = Quaternion.LookRotation(flatLook.normalized, Vector3.up) * Quaternion.Euler(0f, bolt.modelYawOffset, 0f);
         }
 
-        if (toolController != null)
-            toolController.onToolChanged.AddListener(OnToolChanged);
+        if (autoReactToSceneTasks)
+        {
+            if (toolController != null)
+                toolController.onToolChanged.AddListener(OnToolChanged);
 
-        HookTaskEvents();
+            HookTaskEvents();
+        }
+
         lastActionTime = Time.time;
-        nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
+        nextRoamTime = Time.time + UnityEngine.Random.Range(minWaitAtPoint, maxWaitAtPoint);
 
         if (bolt != null)
             bolt.SetEmotion(BoltEmotion.Kind);
@@ -247,7 +258,7 @@ public class BoltCompanion : MonoBehaviour
         return angle > visionHalfAngle + 20f;
     }
 
-    private Vector3 PickVisionPoint()
+    private Vector3 PickVisionPoint(bool preferFar)
     {
         if (playerHead == null)
             return bolt != null ? bolt.BodyCenter : transform.position;
@@ -259,16 +270,18 @@ public class BoltCompanion : MonoBehaviour
             ? Vector3.SignedAngle(headForward, toCurrent.normalized, Vector3.up)
             : 0f;
 
+        float distMin = preferFar ? Mathf.Lerp(minRoamDistance, maxRoamDistance, 0.7f) : minRoamDistance;
+
         for (int i = 0; i < 10; i++)
         {
             float yaw;
-            if (i < 4 || Random.value < 0.6f)
-                yaw = currentSide >= 0f ? Random.Range(-visionHalfAngle, -4f) : Random.Range(4f, visionHalfAngle);
+            if (i < 4 || UnityEngine.Random.value < 0.6f)
+                yaw = currentSide >= 0f ? UnityEngine.Random.Range(-visionHalfAngle, -4f) : UnityEngine.Random.Range(4f, visionHalfAngle);
             else
-                yaw = Random.Range(-visionHalfAngle, visionHalfAngle);
+                yaw = UnityEngine.Random.Range(-visionHalfAngle, visionHalfAngle);
 
-            float dist = Random.Range(minRoamDistance, maxRoamDistance);
-            float height = Random.Range(minHeightOffset, maxHeightOffset);
+            float dist = UnityEngine.Random.Range(distMin, maxRoamDistance);
+            float height = UnityEngine.Random.Range(minHeightOffset, maxHeightOffset);
             Vector3 dir = (Quaternion.Euler(0f, yaw, 0f) * headForward).normalized;
             Vector3 candidate = playerHead.position + dir * dist + Vector3.up * height;
 
@@ -286,27 +299,28 @@ public class BoltCompanion : MonoBehaviour
                 return candidate;
         }
 
-        return playerHead.position + headForward * minRoamDistance + Vector3.up * 0.05f;
+        return playerHead.position + headForward * (preferFar ? maxRoamDistance : minRoamDistance) + Vector3.up * 0.05f;
     }
 
     private void OnBoltArrived()
     {
         outOfViewTimer = 0f;
-        nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
+        nextRoamTime = Time.time + UnityEngine.Random.Range(minWaitAtPoint, maxWaitAtPoint);
     }
 
     private void OnToolChanged(ProstheticTool tool)
     {
-        lastActionTime = Time.time;
+        if (!autoReactToSceneTasks)
+            return;
 
         if (tool == ProstheticTool.Hammer)
-            bolt.SetEmotion(BoltEmotion.Laugh);
+            TriggerEmotion(BoltEmotion.Laugh);
         else if (tool == ProstheticTool.Scissors)
-            bolt.SetEmotion(BoltEmotion.Kind);
+            TriggerEmotion(BoltEmotion.Kind);
         else if (tool == ProstheticTool.Knife || tool == ProstheticTool.Torch)
-            bolt.SetEmotion(BoltEmotion.Troll);
+            TriggerEmotion(BoltEmotion.Troll);
         else
-            bolt.SetEmotion(BoltEmotion.Standard);
+            TriggerEmotion(BoltEmotion.Standard);
 
         PlayRandomClip(toolSwitchClips);
     }
@@ -317,9 +331,10 @@ public class BoltCompanion : MonoBehaviour
 
     private void OnTaskCompleted()
     {
-        lastActionTime = Time.time;
-        lastReactionTime = Time.time;
-        bolt.SetEmotion(BoltEmotion.Laugh);
+        if (!autoReactToSceneTasks)
+            return;
+
+        TriggerEmotion(BoltEmotion.Laugh);
         FlyToRandomVisionPoint(false);
         PlayRandomClip(taskDoneClips);
     }
@@ -329,7 +344,7 @@ public class BoltCompanion : MonoBehaviour
         if (frameSource == null || !frameSource.IsRunning)
             return;
 
-        if (Time.time - lastReactionTime < reactionCooldown)
+        if (bolt.IsFlying || Time.time - lastReactionTime < reactionCooldown)
             return;
 
         bool dangerActive = IsDangerToolActive();
@@ -346,16 +361,14 @@ public class BoltCompanion : MonoBehaviour
 
             if (isProstheticDanger && dist <= dangerToolRadius)
             {
-                lastReactionTime = Time.time;
-                lastActionTime = Time.time;
-                bolt.SetEmotion(BoltEmotion.Angry);
+                TriggerEmotion(BoltEmotion.Angry);
                 Vector3 away = boltCenter - handPos;
                 away.y = 0f;
                 if (away.sqrMagnitude < 0.001f)
                     away = bolt.transform.position - (playerHead != null ? playerHead.position : Vector3.zero);
                 away.y = 0f;
                 away.Normalize();
-                nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
+                nextRoamTime = Time.time + UnityEngine.Random.Range(minWaitAtPoint, maxWaitAtPoint);
                 bolt.FlyTo(boltCenter + away * 0.7f + Vector3.up * 0.1f, playerHead);
                 PlayRandomClip(dangerClips);
                 return;
@@ -363,15 +376,13 @@ public class BoltCompanion : MonoBehaviour
 
             if (dist <= personalSpaceRadius)
             {
-                lastReactionTime = Time.time;
-                lastActionTime = Time.time;
                 if (handPos.y > boltCenter.y + 0.05f)
                 {
-                    bolt.SetEmotion(BoltEmotion.Kind);
+                    TriggerEmotion(BoltEmotion.Kind);
                 }
                 else
                 {
-                    bolt.SetEmotion(BoltEmotion.Troll);
+                    TriggerEmotion(BoltEmotion.Troll);
                     FlyToRandomVisionPoint(false);
                 }
                 return;
@@ -420,11 +431,8 @@ public class BoltCompanion : MonoBehaviour
 
     private void TriggerIdleTease()
     {
-        lastActionTime = Time.time;
-        lastReactionTime = Time.time;
-
         BoltEmotion[] teaseEmotions = { BoltEmotion.Troll, BoltEmotion.Sad, BoltEmotion.Laugh };
-        bolt.SetEmotion(teaseEmotions[teaseStep % teaseEmotions.Length]);
+        TriggerEmotion(teaseEmotions[teaseStep % teaseEmotions.Length]);
         teaseStep++;
 
         FlyToRandomVisionPoint(false);
@@ -437,12 +445,13 @@ public class BoltCompanion : MonoBehaviour
         if (kb == null)
             return;
 
-        if (kb.digit1Key.wasPressedThisFrame) SetStandard();
-        else if (kb.digit2Key.wasPressedThisFrame) SetKind();
-        else if (kb.digit3Key.wasPressedThisFrame) SetLaugh();
-        else if (kb.digit4Key.wasPressedThisFrame) SetAngry();
-        else if (kb.digit5Key.wasPressedThisFrame) SetSad();
-        else if (kb.digit6Key.wasPressedThisFrame) SetTroll();
+        if (kb.digit1Key.wasPressedThisFrame) TriggerStandard();
+        else if (kb.digit2Key.wasPressedThisFrame) TriggerKind();
+        else if (kb.digit3Key.wasPressedThisFrame) TriggerLaugh();
+        else if (kb.digit4Key.wasPressedThisFrame) TriggerAngry();
+        else if (kb.digit5Key.wasPressedThisFrame) TriggerSad();
+        else if (kb.digit6Key.wasPressedThisFrame) TriggerTroll();
+        else if (kb.digit7Key.wasPressedThisFrame || kb.numpad7Key.wasPressedThisFrame) TriggerFaceTaunt();
         else if (kb.gKey.wasPressedThisFrame) FlyToRandomVisionPoint();
     }
 
@@ -451,51 +460,72 @@ public class BoltCompanion : MonoBehaviour
         if (voiceSource == null || clips == null || clips.Length == 0)
             return;
 
-        AudioClip clip = clips[Random.Range(0, clips.Length)];
+        AudioClip clip = clips[UnityEngine.Random.Range(0, clips.Length)];
         if (clip != null)
             voiceSource.PlayOneShot(clip);
     }
 
-    [ContextMenu("Emotion/Standard")]
-    public void SetStandard()
+    public void TriggerEmotion(BoltEmotion emotion)
     {
         lastActionTime = Time.time;
-        if (bolt != null) bolt.SetEmotion(BoltEmotion.Standard);
+        lastReactionTime = Time.time;
+        emotionLockUntil = Time.time + triggeredEmotionHoldTime;
+
+        if (bolt != null)
+            bolt.SetEmotion(emotion);
     }
+
+    public void TriggerEmotionByName(string emotionName)
+    {
+        if (string.IsNullOrWhiteSpace(emotionName))
+            return;
+
+        string clean = emotionName.Trim();
+        if (string.Equals(clean, "Taunt", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(clean, "FaceTaunt", StringComparison.OrdinalIgnoreCase))
+        {
+            TriggerFaceTaunt();
+            return;
+        }
+
+        if (Enum.TryParse(clean, true, out BoltEmotion emotion))
+            TriggerEmotion(emotion);
+    }
+
+    [ContextMenu("Emotion/Standard")]
+    public void TriggerStandard() => TriggerEmotion(BoltEmotion.Standard);
 
     [ContextMenu("Emotion/Kind")]
-    public void SetKind()
-    {
-        lastActionTime = Time.time;
-        if (bolt != null) bolt.SetEmotion(BoltEmotion.Kind);
-    }
+    public void TriggerKind() => TriggerEmotion(BoltEmotion.Kind);
 
     [ContextMenu("Emotion/Laugh")]
-    public void SetLaugh()
-    {
-        lastActionTime = Time.time;
-        if (bolt != null) bolt.SetEmotion(BoltEmotion.Laugh);
-    }
+    public void TriggerLaugh() => TriggerEmotion(BoltEmotion.Laugh);
 
     [ContextMenu("Emotion/Angry")]
-    public void SetAngry()
-    {
-        lastActionTime = Time.time;
-        if (bolt != null) bolt.SetEmotion(BoltEmotion.Angry);
-    }
+    public void TriggerAngry() => TriggerEmotion(BoltEmotion.Angry);
 
     [ContextMenu("Emotion/Sad")]
-    public void SetSad()
-    {
-        lastActionTime = Time.time;
-        if (bolt != null) bolt.SetEmotion(BoltEmotion.Sad);
-    }
+    public void TriggerSad() => TriggerEmotion(BoltEmotion.Sad);
 
     [ContextMenu("Emotion/Troll")]
-    public void SetTroll()
+    public void TriggerTroll() => TriggerEmotion(BoltEmotion.Troll);
+
+    [ContextMenu("Fly/Face Taunt")]
+    public void TriggerFaceTaunt()
     {
         lastActionTime = Time.time;
-        if (bolt != null) bolt.SetEmotion(BoltEmotion.Troll);
+        lastReactionTime = Time.time;
+        emotionLockUntil = Time.time + triggeredEmotionHoldTime;
+        nextRoamTime = Time.time + UnityEngine.Random.Range(minWaitAtPoint, maxWaitAtPoint);
+        outOfViewTimer = 0f;
+
+        if (tauntClips != null && tauntClips.Length > 0)
+            PlayRandomClip(tauntClips);
+        else
+            PlayRandomClip(teaseClips);
+
+        if (bolt != null)
+            bolt.PlayFaceTaunt(playerHead, PickVisionPoint(true));
     }
 
     [ContextMenu("Fly/Next Random Point")]
@@ -509,15 +539,15 @@ public class BoltCompanion : MonoBehaviour
         if (bolt == null)
             return;
 
-        nextRoamTime = Time.time + Random.Range(minWaitAtPoint, maxWaitAtPoint);
+        nextRoamTime = Time.time + UnityEngine.Random.Range(minWaitAtPoint, maxWaitAtPoint);
         outOfViewTimer = 0f;
 
-        if (varyEmotion && Time.time - lastReactionTime >= reactionCooldown && Random.value < 0.45f)
+        if (varyEmotion && Time.time >= emotionLockUntil && Time.time - lastReactionTime >= reactionCooldown && UnityEngine.Random.value < 0.45f)
         {
             BoltEmotion[] roamEmotions = { BoltEmotion.Standard, BoltEmotion.Kind, BoltEmotion.Troll, BoltEmotion.Laugh };
-            bolt.SetEmotion(roamEmotions[Random.Range(0, roamEmotions.Length)]);
+            bolt.SetEmotion(roamEmotions[UnityEngine.Random.Range(0, roamEmotions.Length)]);
         }
 
-        bolt.FlyTo(PickVisionPoint(), playerHead);
+        bolt.FlyTo(PickVisionPoint(false), playerHead);
     }
 }
